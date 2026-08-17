@@ -5,8 +5,22 @@ import { BASE_URL } from "../api/base";
 import { AuthContext } from "../context/AuthProvider";
 import Footer from "./Footer";
 
+const getStoredAccessToken = () => {
+  const currentToken = localStorage.getItem("accessToken");
+  if (currentToken) return currentToken;
+
+  const legacyToken = localStorage.getItem("access_token");
+  if (legacyToken) {
+    localStorage.setItem("accessToken", legacyToken);
+    localStorage.removeItem("access_token");
+    return legacyToken;
+  }
+
+  return null;
+};
+
 const getUserIdFromToken = () => {
-  const token = localStorage.getItem("accessToken");
+  const token = getStoredAccessToken();
 
   if (!token) {
     return null;
@@ -42,9 +56,9 @@ const Cart = () => {
       return;
     }
 
-    const userId = getUserIdFromToken();
+    const accessToken = getStoredAccessToken();
 
-    if (!userId) {
+    if (!accessToken) {
       setError("Please sign in to view your cart.");
       setCartItems([]);
       return;
@@ -53,16 +67,48 @@ const Cart = () => {
     const fetchCart = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${BASE_URL}api/cart/${userId}/`, {
+        const profileResponse = await axios.get(`${BASE_URL}/api/profile/`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         });
+
+        const userId = profileResponse.data?.id ?? getUserIdFromToken();
+
+        if (!userId) {
+          throw new Error("Unable to resolve the current user.");
+        }
+
+        const response = await axios.get(`${BASE_URL}/api/cart/${userId}/`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
         setCartItems(response.data || []);
         setError("");
       } catch (err) {
         console.error("Error fetching cart:", err);
-        setError("Unable to load your cart right now.");
+
+        if (err.response?.status === 401) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          navigate("/login", { replace: true });
+          setError("Your session has expired. Please sign in again.");
+          setCartItems([]);
+          return;
+        }
+
+        const backendMessage =
+          err.response?.data?.error ||
+          err.response?.data?.detail ||
+          err.message;
+
+        if (typeof backendMessage === "string" && backendMessage) {
+          setError(backendMessage);
+        } else {
+          setError("Unable to load your cart right now.");
+        }
         setCartItems([]);
       } finally {
         setLoading(false);
@@ -82,15 +128,22 @@ const Cart = () => {
       return;
     }
 
+    const accessToken = getStoredAccessToken();
+
+    if (!accessToken) {
+      navigate("/login");
+      return;
+    }
+
     try {
       await axios.put(
-        `${BASE_URL}api/cart/update/${cartId}/`,
+        `${BASE_URL}/api/cart/update/${cartId}/`,
         {
           qty: nextQty,
         },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         },
       );
@@ -113,10 +166,17 @@ const Cart = () => {
   };
 
   const removeItem = async (cartId) => {
+    const accessToken = getStoredAccessToken();
+
+    if (!accessToken) {
+      navigate("/login");
+      return;
+    }
+
     try {
-      await axios.delete(`${BASE_URL}api/cart/delete/${cartId}/`, {
+      await axios.delete(`${BASE_URL}/api/cart/delete/${cartId}/`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
       setCartItems((current) =>
@@ -128,25 +188,21 @@ const Cart = () => {
     }
   };
 
-  const handleCheckout = async () => {
-    try {
-      await axios.post(
-        `${BASE_URL}api/cart/checkout/`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        },
-      );
+  const handleCheckout = () => {
+    const accessToken = getStoredAccessToken();
 
-      setCartItems([]);
-      setError("");
-      navigate("/profile");
-    } catch (err) {
-      console.error("Error checking out:", err);
-      setError("Unable to complete checkout right now.");
+    if (!accessToken) {
+      navigate("/login");
+      return;
     }
+
+    if (cartItems.length === 0) {
+      setError("Your cart is empty.");
+      return;
+    }
+
+    setError("");
+    navigate("/checkout");
   };
 
   if (!isAuthenticated) {

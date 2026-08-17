@@ -7,6 +7,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
+import Checkout from "./pages/Checkout";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFail from "./pages/PaymentFail";
 import { AuthProvider } from "./context/AuthProvider";
 import PrivateRoute from "./context/PrivateRoute";
 
@@ -30,6 +33,16 @@ export default function App() {
             }
           />
           <Route path="/product/:id" element={<ProductDetails />} />
+          <Route
+            path="/checkout"
+            element={
+              <PrivateRoute>
+                <Checkout />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-fail" element={<PaymentFail />} />
         </Routes>
       </AuthProvider>
     </Router>

@@ -228,18 +228,18 @@ def create_xendit_payment(request):
         )
 
 
-    cart_items = cartUser.objects.filter(user=user).selected_related('product')
+    cart_items = cartUser.objects.filter(user=user).select_related('products')
 
-    if not cart_items.exist():
+    if not cart_items.exists():
         return Response(
             {'error': 'Cart is empty'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
     total_price = sum(
-        item.product.product_price * item.qty
+        (item.products.product_price or 0) * (item.qty or 0)
         for item in cart_items
-        )
+    )
 
     if not settings.XENDIT_SECRET_KEY:
         return Response(
@@ -258,8 +258,8 @@ def create_xendit_payment(request):
         "description": "Payment for your order",
         "success_redirect_url": settings.XENDIT_SUCCESS_REDIRECT_URL,
         "fail_redirect_url": settings.XENDIT_FAILURE_REDIRECT_URL,
-        "customer":{
-            "given_names": data['fullname'],
+        "customer": {
+            "given_names": data.get('fullname') or data.get('fullName'),
             "email": user.email,
         },
         "customer_notification_preference": {
@@ -313,11 +313,11 @@ def create_xendit_payment(request):
 
         shippingAddress.objects.create(
             paymentId=payment,
-            fullName = data['fullName'],
-            address = data['address'],
-            city = data['city'],
-            postalCode = data['postalCode'],
-            country = data['country'],
+            fullName=data.get('fullName') or data.get('fullname'),
+            address=data['address'],
+            city=data['city'],
+            postalCode=data.get('postalCode') or data.get('postal_code'),
+            country=data['country'],
         )
 
         return Response({'checkout_url': checkout_url}, status=status.HTTP_200_OK)
@@ -325,11 +325,12 @@ def create_xendit_payment(request):
 
 import json
 
-@csrf_exempt
+from django.views.decorators.csrf import csrf_exempt
 @api_view(['POST'])
+@csrf_exempt
 def xendit_webhook(request):
-    try: 
-        callback_token = request.header.get('x-callback-token')
+    try:
+        callback_token = request.headers.get('x-callback-token')
 
         if not settings.XENDIT_CALLBACK_TOKEN:
             return Response({'error': 'Invalid xendit callback token'}, status=status.HTTP_403_FORBIDDEN)
@@ -369,6 +370,66 @@ def xendit_webhook(request):
         return Response({'message': 'Payment confirmed, Order Items Created'}, status=status.HTTP_200_OK)
     except(KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_xendit_payment(request):
+    invoice_id = request.data.get('invoice_id') or request.data.get('id')
+    external_id = request.data.get('external_id')
+    invoice_status = request.data.get('status')
+
+    payment = None
+
+    if invoice_id:
+        payment = paymentMethod.objects.filter(xendit_invoice_id=invoice_id).first()
+    if not payment and external_id:
+        payment = paymentMethod.objects.filter(xendit_external_id=external_id).first()
+    if not payment:
+        payment = paymentMethod.objects.filter(
+            user=request.user,
+            isPaid=False,
+        ).order_by('-id').first()
+
+    if not payment:
+        payment = paymentMethod.objects.filter(
+            user=request.user,
+        ).order_by('-id').first()
+
+    if not payment:
+        return Response({'message': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if invoice_id and not invoice_status:
+        try:
+            response = requests.get(
+                f'https://api.xendit.co/v2/invoices/{invoice_id}',
+                auth=(settings.XENDIT_SECRET_KEY, ''),
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+            invoice_status = data.get('status') or payment.xendit_status
+        except requests.RequestException:
+            invoice_status = payment.xendit_status
+
+    if invoice_status:
+        payment.xendit_status = invoice_status
+        payment.save(update_fields=['xendit_status'])
+
+    if invoice_status in ['PAID', 'SETTLED'] and not payment.isPaid:
+        payment.mark_as_paid()
+
+    if payment.isPaid and not payment.orderitem_set.exists():
+        cart_items = cartUser.objects.filter(user=request.user).select_related('products')
+        if cart_items.exists():
+            payment.mark_as_paid()
+
+    return Response({
+        'message': 'Payment confirmed.',
+        'paid': payment.isPaid,
+        'status': payment.xendit_status,
+    }, status=status.HTTP_200_OK)
+
 
 from .serializers import PaymentMethodSerializer
 @api_view(['GET'])

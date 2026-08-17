@@ -42,7 +42,7 @@ export default function ProductDetails() {
   const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
-    fetch(`${BASE_URL}api/products/${id}/`)
+    fetch(`${BASE_URL}/api/products/${id}/`)
       .then((res) => res.json())
       .then((data) => setProduct(data))
       .catch((err) => console.error(err));
@@ -63,7 +63,7 @@ export default function ProductDetails() {
 
     try {
       setAddingToCart(true);
-      await axios.post(`${BASE_URL}api/cart/add/`, {
+      await axios.post(`${BASE_URL}/api/cart/add/`, {
         user: userId,
         product: product.id,
         qty,
@@ -90,14 +90,14 @@ export default function ProductDetails() {
     }
 
     try {
-      await axios.post(`${BASE_URL}api/cart/add/`, {
+      await axios.post(`${BASE_URL}/api/cart/add/`, {
         user: userId,
         product: product.id,
         qty,
       });
 
       await axios.post(
-        `${BASE_URL}api/cart/checkout/`,
+        `${BASE_URL}/api/cart/checkout/`,
         {},
         {
           headers: {

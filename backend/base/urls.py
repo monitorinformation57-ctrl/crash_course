@@ -12,6 +12,7 @@ from .views import (
     checkout_cart,
     delete_profile_order,
     create_xendit_payment,
+    confirm_xendit_payment,
     list_user_orders,
     xendit_webhook,
 
@@ -37,6 +38,7 @@ urlpatterns = [
     path('cart/update/<int:cart_id>/', update_cart, name='update_cart'),
     path('cart/delete/<int:cart_id>/', delete_cart, name='delete_cart'),
     path('create-xendit-payment/', create_xendit_payment, name='create_xendit_payment'),
+    path('confirm-xendit-payment/', confirm_xendit_payment, name='confirm_xendit_payment'),
     path('orders/', list_user_orders, name='list_user_orders'),
     path('webhook/xendit/', xendit_webhook, name='xendit_webhook'),
 ]

@@ -59,10 +59,10 @@ const Profile = () => {
     const fetchProfileData = async () => {
       try {
         const [profileResponse, ordersResponse] = await Promise.all([
-          axios.get(`${BASE_URL}api/profile/`, {
+          axios.get(`${BASE_URL}/api/profile/`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
-          axios.get(`${BASE_URL}api/profile/orders/`, {
+          axios.get(`${BASE_URL}/api/profile/orders/`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
         ]);
@@ -100,7 +100,7 @@ const Profile = () => {
     }
 
     try {
-      await axios.delete(`${BASE_URL}api/profile/orders/${purchaseId}/`, {
+      await axios.delete(`${BASE_URL}/api/profile/orders/${purchaseId}/`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 

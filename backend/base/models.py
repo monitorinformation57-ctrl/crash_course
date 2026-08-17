@@ -32,21 +32,23 @@ class paymentMethod(models.Model):
 
     def mark_as_paid(self):
         if self.isPaid:
-            return  # Already marked as paid, no action needed
+            return
 
-        cart = cartUser.objects.filter(user=self.user)
+        cart_items = list(cartUser.objects.filter(user=self.user).select_related('products'))
+
         with transaction.atomic():
-            for c in cart:
-                order_item = orderItem.objects.create(
-                    product=c.products,
+            for item in cart_items:
+                orderItem.objects.create(
+                    product=item.products,
                     payment=self,
-                    qty=c.qty,
-                    price=c.products.product_price * c.qty
+                    qty=item.qty,
+                    price=(item.products.product_price or 0) * (item.qty or 0),
                 )
-                cart.delete()  # Remove the item from the cart after creating the order item
-                self.isPaid = True
-                self.PaidAt = timezone.now()
-                self.save()
+
+            cartUser.objects.filter(user=self.user).delete()
+            self.isPaid = True
+            self.PaidAt = timezone.now()
+            self.save(update_fields=['isPaid', 'PaidAt'])
 
 class orderItem(models.Model):
     product = models.ForeignKey(Product, blank=True, on_delete=models.CASCADE)

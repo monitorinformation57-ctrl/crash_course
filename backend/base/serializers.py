@@ -9,20 +9,25 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class RegisterSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all())],
+        min_length=3,
+        max_length=150,
+    )
     email = serializers.EmailField(
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all())]
-    ) 
-
-    password = serializers.CharField(write_only=True)
+        validators=[UniqueValidator(queryset=User.objects.all())],
+    )
+    password = serializers.CharField(write_only=True, min_length=8)
 
     def create(self, validated_data):
-        
-        return User.objects.create_user(**validated_data)
+        password = validated_data.pop('password')
+        return User.objects.create_user(password=password, **validated_data)
 
     class Meta:
         model = User
-        fields = ['email', 'password']
+        fields = ['username', 'email', 'password']
 
 class ShippingAddressSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,11 +64,20 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
         return None
 
 class CheckoutSerializer(serializers.Serializer):
-    fullname = serializers.CharField(max_length=100)
+    fullName = serializers.CharField(max_length=100, source='fullname')
     address = serializers.CharField(max_length=200)
     city = serializers.CharField(max_length=100)
-    postal_code = serializers.CharField(max_length=20)
+    postalCode = serializers.CharField(max_length=20, source='postal_code')
     country = serializers.CharField(max_length=100)
+
+    def to_internal_value(self, data):
+        if 'fullName' in data and 'fullname' not in data:
+            data = data.copy()
+            data['fullname'] = data['fullName']
+        if 'postalCode' in data and 'postal_code' not in data:
+            data = data.copy()
+            data['postal_code'] = data['postalCode']
+        return super().to_internal_value(data)
 
 # Backward compatibility for older imports.
 checkOutSerializer = CheckoutSerializer
