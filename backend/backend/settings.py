@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -59,15 +60,23 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
+_default_cors_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
     "http://localhost:5175",
     "http://127.0.0.1:5175",
-    'https://crash-course-wine.vercel.app'
+    "https://crash-course-wine.vercel.app",
 ]
+
+_extra_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+CORS_ALLOWED_ORIGINS = _default_cors_origins + _extra_cors_origins
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -153,7 +162,19 @@ MAILERS = {
 }
 
 
-XENDIT_SECRET_KEY = 'xnd_development_9f8kplxHekZXJ7xQIKE7XvnnB8d0jSM2c0YAl5L8plSE5IPDVsCgOgHouVy'
-XENDIT_CALLBACK_TOKEN = '2GjUKVhDXkMgnSoR04sDdsc50Oggpzw16lM1lhbbLoNp2pSc'
-XENDIT_SUCCESS_REDIRECT_URL = 'http://localhost:5173/payment-success'
-XENDIT_FAILURE_REDIRECT_URL = 'http://localhost:5173/payment-fail'
+XENDIT_SECRET_KEY = os.getenv(
+    "XENDIT_SECRET_KEY",
+    "xnd_development_9f8kplxHekZXJ7xQIKE7XvnnB8d0jSM2c0YAl5L8plSE5IPDVsCgOgHouVy",
+)
+XENDIT_CALLBACK_TOKEN = os.getenv(
+    "XENDIT_CALLBACK_TOKEN",
+    "2GjUKVhDXkMgnSoR04sDdsc50Oggpzw16lM1lhbbLoNp2pSc",
+)
+XENDIT_SUCCESS_REDIRECT_URL = os.getenv(
+    "XENDIT_SUCCESS_REDIRECT_URL",
+    "http://localhost:5173/payment-success",
+)
+XENDIT_FAILURE_REDIRECT_URL = os.getenv(
+    "XENDIT_FAILURE_REDIRECT_URL",
+    "http://localhost:5173/payment-fail",
+)
