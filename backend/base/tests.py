@@ -8,6 +8,12 @@ from .serializers import CheckoutSerializer
 
 
 class CheckoutSerializerTests(TestCase):
+    def test_product_images_are_served_from_media_root(self):
+        response = self.client.get("/images/product_images/1.png")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("image/png", response["Content-Type"])
+
     def test_accepts_frontend_field_names(self):
         payload = {
             "fullName": "Jane Doe",

@@ -149,7 +149,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 MEDIA_URL = '/images/'
-MEDIA_ROOT = 'static/images'
+MEDIA_ROOT = BASE_DIR / 'static' / 'images'
 
 
 # Email
@@ -170,11 +170,15 @@ XENDIT_CALLBACK_TOKEN = os.getenv(
     "XENDIT_CALLBACK_TOKEN",
     "2GjUKVhDXkMgnSoR04sDdsc50Oggpzw16lM1lhbbLoNp2pSc",
 )
+FRONTEND_BASE_URL = os.getenv(
+    "FRONTEND_BASE_URL",
+    "https://crash-course-wine.vercel.app",
+)
 XENDIT_SUCCESS_REDIRECT_URL = os.getenv(
     "XENDIT_SUCCESS_REDIRECT_URL",
-    "http://localhost:5173/payment-success",
+    f"{FRONTEND_BASE_URL}/payment-success",
 )
 XENDIT_FAILURE_REDIRECT_URL = os.getenv(
     "XENDIT_FAILURE_REDIRECT_URL",
-    "http://localhost:5173/payment-fail",
+    f"{FRONTEND_BASE_URL}/payment-fail",
 )
