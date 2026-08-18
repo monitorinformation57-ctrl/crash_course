@@ -45,6 +45,11 @@ class paymentMethod(models.Model):
                     price=(item.products.product_price or 0) * (item.qty or 0),
                 )
 
+                if item.products and item.qty:
+                    product = Product.objects.select_for_update().get(pk=item.products.pk)
+                    product.countInStock = max((product.countInStock or 0) - item.qty, 0)
+                    product.save(update_fields=['countInStock'])
+
             cartUser.objects.filter(user=self.user).delete()
             self.isPaid = True
             self.PaidAt = timezone.now()

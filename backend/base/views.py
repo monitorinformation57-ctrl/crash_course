@@ -123,6 +123,10 @@ def checkout_cart(request):
             price=item.products.product_price or 0,
         )
 
+        if item.qty:
+            item.products.countInStock = max((item.products.countInStock or 0) - item.qty, 0)
+            item.products.save(update_fields=['countInStock'])
+
     cart_items.delete()
 
     return Response(

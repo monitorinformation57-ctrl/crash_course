@@ -96,17 +96,7 @@ export default function ProductDetails() {
         qty,
       });
 
-      await axios.post(
-        `${BASE_URL}/api/cart/checkout/`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        },
-      );
-
-      navigate("/profile");
+      navigate("/checkout");
     } catch (error) {
       console.error("Error during buy now:", error);
     }
